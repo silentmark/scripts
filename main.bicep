@@ -154,24 +154,7 @@ resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'
-    scriptContent: '''
-      $retry = 0
-      do {
-          $vm = Get-AzVM -ResourceGroupName "${resourceGroupName}" -Name "${vmName}" -Status
-          $state = $vm.Statuses | Where-Object { $_.Code -like "PowerState/*" } | Select-Object -ExpandProperty DisplayStatus
-          Write-Host "VM state: $state"
-
-          if ($state -eq "VM running") {
-              Write-Host "VM is running, proceeding..."
-              exit 0
-          }
-
-          Start-Sleep -Seconds ${checkIntervalSeconds}
-          $retry++
-      } while ($retry -lt ${maxRetries})
-
-      throw "VM did not reach running state within the expected time."
-    '''
+    scriptContent: '$retry = 0; do { $vm = Get-AzVM -ResourceGroupName "${resourceGroupName}" -Name "${vmName}" -Status; $state = $vm.Statuses | Where-Object { $_.Code -like "PowerState/*" } | Select-Object -ExpandProperty DisplayStatus; Write-Host "VM state: $state"; if ($state -eq "VM running") { Write-Host "VM is running, proceeding..."; exit 0 } Start-Sleep -Seconds 30; $retry++; } while ($retry -lt 20); throw "VM did not reach running state within the expected time.";'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'
@@ -185,18 +168,7 @@ resource sqlSetup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'
-    scriptContent: '''
-      Write-Host "Executing SQL setup inside VM ${vmName}..."
-
-      $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force
-      $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword)
-
-      # Copy Setup-SQL.ps1 from storage/repo to VM and run it
-      Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId 'RunPowerShellScript' `
-        -ScriptPath "https://raw.githubusercontent.com/silentmark/scripts/setup-sql.ps1" -Parameter @{"AdminPassword"="${adminPassword}"}
-
-      Write-Host "SQL Setup script executed inside VM."
-    '''
+    scriptContent: 'Write-Host "Executing SQL setup inside VM ${vmName}..."; $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword); Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId \'RunPowerShellScript\' -ScriptPath "https://raw.githubusercontent.com/silentmark/scripts/setup-sql.ps1" -Parameter @{"AdminPassword"="${adminPassword}"};Write-Host "SQL Setup script executed inside VM."'
     timeout: 'PT60M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'

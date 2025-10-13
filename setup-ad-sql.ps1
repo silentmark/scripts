@@ -3,6 +3,8 @@ param(
     [Parameter(Mandatory=$true)] [string]$AdminPassword
 )
 
+$SqlDownloadUrl = "https://go.microsoft.com/fwlink/?linkid=866662"  # SQL Server 2022 Developer ISO
+Invoke-WebRequest -Uri $SqlDownloadUrl -OutFile "C:\SQL2022.iso"
 
 # After reboot, re-run post configuration
 $scriptBlock = {
@@ -22,14 +24,9 @@ $scriptBlock = {
             -SamAccountName $u.Sam -AccountPassword $password -Enabled $true -PasswordNeverExpires $true
     }
 
-
     Write-Host "Installing SQL Server Developer Edition..."
+    Mount-DiskImage -ImagePath "C:\SQL2022.iso"
 
-    $SqlDownloadUrl = "https://go.microsoft.com/fwlink/?linkid=866662"  # SQL Server 2022 Developer ISO
-    $SqlInstaller = "C:\SQL2022.iso"
-
-    Invoke-WebRequest -Uri $SqlDownloadUrl -OutFile $SqlInstaller
-    Mount-DiskImage -ImagePath $SqlInstaller
     $mount = Get-Volume | Where-Object { $_.FileSystemLabel -like "SQLSERVER*" } | Select-Object -First 1
 
     $driveLetter = $mount.DriveLetter

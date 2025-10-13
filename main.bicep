@@ -12,7 +12,7 @@ var subnetName = 'subnet-dev-contoso'
 var nsgName = '${vmName}-nsg'
 var nicName = '${vmName}-nic'
 var pipName = '${vmName}-pip'
-var scriptFileUri = 'https://raw.githubusercontent.com/silentmark/scripts/main/setup-ad-sql.ps1' // replace later with actual URI
+var resourceGroupName = resourceGroup().name
 
 // Networking
 resource nsg 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
@@ -128,22 +128,80 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
 }
 
 // Run setup script on first boot
-resource setupExtension 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
-  parent: vm
-  name: 'CustomScriptExtension'
-  location: location
-  properties: {
-    publisher: 'Microsoft.Compute'
-    type: 'CustomScriptExtension'
-    typeHandlerVersion: '1.10'
-    autoUpgradeMinorVersion: true
-    settings: {
-      fileUris: [
-        scriptFileUri
-      ]
-    }
-    protectedSettings: {
-      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad-sql.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
+resource setupExtensionForest 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
+    parent: vm
+    name: 'SetupExtensionForest'
+    location: location
+    properties: {
+      publisher: 'Microsoft.Compute'
+      type: 'CustomScriptExtension'
+      typeHandlerVersion: '1.10'
+      autoUpgradeMinorVersion: true
+      settings: {
+        fileUris: [
+          'https://raw.githubusercontent.com/silentmark/scripts/setup-ad.ps1'
+        ]
+      protectedSettings: {
+        commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
+      }
     }
   }
+}
+
+resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: 'waitForVM'
+  location: location
+  kind: 'AzurePowerShell'
+  properties: {
+    azPowerShellVersion: '11.0'
+    scriptContent: '''
+      $retry = 0
+      do {
+          $vm = Get-AzVM -ResourceGroupName "${resourceGroupName}" -Name "${vmName}" -Status
+          $state = $vm.Statuses | Where-Object { $_.Code -like "PowerState/*" } | Select-Object -ExpandProperty DisplayStatus
+          Write-Host "VM state: $state"
+
+          if ($state -eq "VM running") {
+              Write-Host "VM is running, proceeding..."
+              exit 0
+          }
+
+          Start-Sleep -Seconds ${checkIntervalSeconds}
+          $retry++
+      } while ($retry -lt ${maxRetries})
+
+      throw "VM did not reach running state within the expected time."
+    '''
+    timeout: 'PT30M'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'P1D'
+  }
+}
+
+
+resource sqlSetup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: 'sqlSetup'
+  location: location
+  kind: 'AzurePowerShell'
+  properties: {
+    azPowerShellVersion: '11.0'
+    scriptContent: '''
+      Write-Host "Executing SQL setup inside VM ${vmName}..."
+
+      $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force
+      $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword)
+
+      # Copy Setup-SQL.ps1 from storage/repo to VM and run it
+      Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId 'RunPowerShellScript' `
+        -ScriptPath "https://raw.githubusercontent.com/silentmark/scripts/setup-sql.ps1" -Parameter @{"AdminPassword"="${adminPassword}"}
+
+      Write-Host "SQL Setup script executed inside VM."
+    '''
+    timeout: 'PT60M'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'P1D'
+  }
+  dependsOn: [
+    waitForVM
+  ]
 }

@@ -3,21 +3,6 @@ param(
     [Parameter(Mandatory=$true)] [string]$AdminPassword
 )
 
-Write-Host "===== Starting AD + SQL setup ====="
-
-Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
-
-$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
-
-Install-ADDSForest `
-  -DomainName $DomainName `
-  -SafeModeAdministratorPassword $SecurePassword `
-  -InstallDns:$true `
-  -Force:$true
-
-Write-Host "AD DS installation complete, rebooting..."
-Restart-Computer -Force
-Start-Sleep -Seconds 120
 
 # After reboot, re-run post configuration
 $scriptBlock = {
@@ -67,3 +52,17 @@ $scriptBlock = {
 $taskAction = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command &{$(&{$scriptBlock})}"
 $taskTrigger = New-ScheduledTaskTrigger -AtStartup
 Register-ScheduledTask -Action $taskAction -Trigger $taskTrigger -TaskName "ADPostConfig" -Description "Finish AD and SQL setup" -User "SYSTEM" -RunLevel Highest
+
+Write-Host "===== Starting AD + SQL setup ====="
+
+Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
+
+$SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+
+Install-ADDSForest `
+  -DomainName $DomainName `
+  -SafeModeAdministratorPassword $SecurePassword `
+  -InstallDns:$true `
+  -Force:$true
+
+Write-Host "AD DS installation complete, rebooting..."

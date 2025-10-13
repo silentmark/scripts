@@ -1,18 +1,17 @@
 param location string = resourceGroup().location
-param adminUsername string = 'adadmin'
+param adminUsername string = 'contosoadmin'
 @secure()
 param adminPassword string
 
-param vmName string = 'adlabvm01'
-param domainName string = 'corp.local'
+param vmName string = 'ad-dev-contoso'
+param domainName string = 'contoso.local'
 param vmSize string = 'Standard_B2ms'
 
-var vnetName = 'vnet-adlab'
-var subnetName = 'subnet-adlab'
+var vnetName = 'vnet-dev-contoso'
+var subnetName = 'subnet-dev-contoso'
 var nsgName = '${vmName}-nsg'
 var nicName = '${vmName}-nic'
 var pipName = '${vmName}-pip'
-var storageAccountName = uniqueString(resourceGroup().id)
 var scriptFileUri = 'https://raw.githubusercontent.com/silentmark/scripts/main/setup-ad-sql.ps1' // replace later with actual URI
 
 // Networking
@@ -130,7 +129,8 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
 
 // Run setup script on first boot
 resource setupExtension 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
-  name: '${vmName}/CustomScriptExtension'
+  parent: vm
+  name: 'CustomScriptExtension'
   location: location
   properties: {
     publisher: 'Microsoft.Compute'
@@ -141,6 +141,8 @@ resource setupExtension 'Microsoft.Compute/virtualMachines/extensions@2023-03-01
       fileUris: [
         scriptFileUri
       ]
+    }
+    protectedSettings: {
       commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad-sql.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
     }
   }

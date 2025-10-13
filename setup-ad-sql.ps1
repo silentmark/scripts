@@ -5,12 +5,10 @@ param(
 
 Write-Host "===== Starting AD + SQL setup ====="
 
-# --- Install AD DS ---
 Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
 
 $SecurePassword = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
 
-# Promote to Domain Controller
 Install-ADDSForest `
   -DomainName $DomainName `
   -SafeModeAdministratorPassword $SecurePassword `
@@ -21,10 +19,6 @@ Write-Host "AD DS installation complete, rebooting..."
 Restart-Computer -Force
 Start-Sleep -Seconds 120
 
-# --- Wait for reboot and continue (script resumes manually if re-run) ---
-# After reboot, AD DS is installed. Now install SQL.
-
-# --- Install SQL Server Developer Edition ---
 $ErrorActionPreference = 'Stop'
 
 Write-Host "Installing SQL Server Developer Edition..."
@@ -46,7 +40,6 @@ Start-Process -FilePath $setupPath -Wait -ArgumentList `
 
 Write-Host "SQL installation complete."
 
-# --- Post-configuration ---
 Write-Host "Configuring SQL to start automatically..."
 Set-Service -Name MSSQLSERVER -StartupType Automatic
 Start-Service -Name MSSQLSERVER

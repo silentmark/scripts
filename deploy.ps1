@@ -1,0 +1,4 @@
+az group create -n rg-dev-contoso -l westeurope
+
+az deployment group create --resource-group rg-dev-contoso -template-file main.bicep --parameters adminPassword='P@ssw0rd1234!'
+

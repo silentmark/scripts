@@ -19,29 +19,51 @@ Write-Host "AD DS installation complete, rebooting..."
 Restart-Computer -Force
 Start-Sleep -Seconds 120
 
-$ErrorActionPreference = 'Stop'
+# After reboot, re-run post configuration
+$scriptBlock = {
+    Import-Module ActiveDirectory
 
-Write-Host "Installing SQL Server Developer Edition..."
+    $password = ConvertTo-SecureString $AdminPassword -AsPlainText -Force
+    $users = @(
+        @{Name="John Doe";Sam="jdoe"},
+        @{Name="Alice Smith";Sam="asmith"},
+        @{Name="Robert Brown";Sam="rbrown"},
+        @{Name="Emma White";Sam="ewhite"},
+        @{Name="Michael Green";Sam="mgreen"}
+    )
 
-$SqlDownloadUrl = "https://go.microsoft.com/fwlink/?linkid=866662"  # SQL Server 2022 Developer ISO
-$SqlInstaller = "C:\SQL2022.iso"
+    foreach ($u in $users) {
+        New-ADUser -Name $u.Name -GivenName $u.Name.Split(' ')[0] -Surname $u.Name.Split(' ')[1] `
+            -SamAccountName $u.Sam -AccountPassword $password -Enabled $true -PasswordNeverExpires $true
+    }
 
-Invoke-WebRequest -Uri $SqlDownloadUrl -OutFile $SqlInstaller
-Mount-DiskImage -ImagePath $SqlInstaller
-$mount = Get-Volume | Where-Object { $_.FileSystemLabel -like "SQLSERVER*" } | Select-Object -First 1
 
-$driveLetter = $mount.DriveLetter
-$setupPath = "$($driveLetter):\setup.exe"
+    Write-Host "Installing SQL Server Developer Edition..."
 
-Write-Host "Running SQL setup from $setupPath"
+    $SqlDownloadUrl = "https://go.microsoft.com/fwlink/?linkid=866662"  # SQL Server 2022 Developer ISO
+    $SqlInstaller = "C:\SQL2022.iso"
 
-Start-Process -FilePath $setupPath -Wait -ArgumentList `
-    "/Q /ACTION=Install /IACCEPTSQLSERVERLICENSETERMS /FEATURES=SQLEngine /INSTANCENAME=MSSQLSERVER /SECURITYMODE=SQL /SAPWD=$AdminPassword /SQLSVCACCOUNT='NT AUTHORITY\NETWORK SERVICE' /SQLSYSADMINACCOUNTS='Administrator'"
+    Invoke-WebRequest -Uri $SqlDownloadUrl -OutFile $SqlInstaller
+    Mount-DiskImage -ImagePath $SqlInstaller
+    $mount = Get-Volume | Where-Object { $_.FileSystemLabel -like "SQLSERVER*" } | Select-Object -First 1
 
-Write-Host "SQL installation complete."
+    $driveLetter = $mount.DriveLetter
+    $setupPath = "$($driveLetter):\setup.exe"
 
-Write-Host "Configuring SQL to start automatically..."
-Set-Service -Name MSSQLSERVER -StartupType Automatic
-Start-Service -Name MSSQLSERVER
+    Write-Host "Running SQL setup from $setupPath"
 
-Write-Host "===== Setup Complete ====="
+    Start-Process -FilePath $setupPath -Wait -ArgumentList `
+        "/Q /ACTION=Install /IACCEPTSQLSERVERLICENSETERMS /FEATURES=SQLEngine /INSTANCENAME=MSSQLSERVER /SECURITYMODE=SQL /SAPWD=$AdminPassword /SQLSVCACCOUNT='NT AUTHORITY\NETWORK SERVICE' /SQLSYSADMINACCOUNTS='Administrator'"
+
+    Write-Host "SQL installation complete."
+
+    Write-Host "Configuring SQL to start automatically..."
+    Set-Service -Name MSSQLSERVER -StartupType Automatic
+    Start-Service -Name MSSQLSERVER
+
+    Write-Host "===== Setup Complete ====="
+}
+
+$taskAction = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -Command &{$(&{$scriptBlock})}"
+$taskTrigger = New-ScheduledTaskTrigger -AtStartup
+Register-ScheduledTask -Action $taskAction -Trigger $taskTrigger -TaskName "ADPostConfig" -Description "Finish AD and SQL setup" -User "SYSTEM" -RunLevel Highest

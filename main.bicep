@@ -3,20 +3,23 @@ param adminUsername string = 'contosoadmin'
 @secure()
 param adminPassword string
 
-param vmName string = 'ad-dev-contoso'
 param domainName string = 'contoso.local'
 param vmSize string = 'Standard_B2ms'
+param vmNames array = [
+  'ad-dev-contoso'
+  'dev-1-contoso'
+  'dev-2-contoso'
+]
+
+var domainControllerName = vmNames[0]
+var memberVmNames = vmNames[1:]
 
 var vnetName = 'vnet-dev-contoso'
 var subnetName = 'subnet-dev-contoso'
-var nsgName = '${vmName}-nsg'
-var nicName = '${vmName}-nic'
-var pipName = '${vmName}-pip'
-var identityName = '${vmName}-uami'
 var resourceGroupName = resourceGroup().name
 
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
-  name: identityName
+  name: 'ad-vms-uami'
   location: location
 }
 
@@ -24,14 +27,14 @@ resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   name: guid(resourceGroup().id, uami.id, 'contributor')
   scope: resourceGroup()
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')  // Owner
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
     principalId: uami.properties.principalId
     principalType: 'ServicePrincipal'
   }
 }
 
 resource nsg 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
-  name: nsgName
+  name: 'ad-vms-nsg'
   location: location
   properties: {
     securityRules: [
@@ -73,8 +76,8 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   }
 }
 
-resource pip 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
-  name: pipName
+resource pips 'Microsoft.Network/publicIPAddresses@2023-04-01' = [for vmName in vmNames: {
+  name: '${vmName}-pip'
   location: location
   sku: {
     name: 'Basic'
@@ -82,10 +85,10 @@ resource pip 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
   properties: {
     publicIPAllocationMethod: 'Dynamic'
   }
-}
+}]
 
-resource nic 'Microsoft.Network/networkInterfaces@2023-04-01' = {
-  name: nicName
+resource nics 'Microsoft.Network/networkInterfaces@2023-04-01' = [for (vmName, i) in vmNames: {
+  name: '${vmName}-nic'
   location: location
   properties: {
     ipConfigurations: [
@@ -97,16 +100,15 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-04-01' = {
             id: vnet.properties.subnets[0].id
           }
           publicIPAddress: {
-            id: pip.id
+            id: pips[i].id
           }
         }
       }
     ]
   }
-}
+}]
 
-// VM
-resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
+resource vms 'Microsoft.Compute/virtualMachines@2023-03-01' = [for (vmName, i) in vmNames: {
   name: vmName
   location: location
   properties: {
@@ -135,17 +137,16 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
     networkProfile: {
       networkInterfaces: [
         {
-          id: nic.id
+          id: nics[i].id
         }
       ]
     }
   }
-}
+}]
 
-// Run setup script on first boot
-resource setupExtensionForest 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
-  parent: vm
-  name: 'SetupExtensionForest'
+resource setupDomainController 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
+  parent: vms[0]
+  name: 'SetupDomainController'
   location: location
   properties: {
     publisher: 'Microsoft.Compute'
@@ -183,24 +184,25 @@ resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
 }
 
 
-resource sqlSetup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
-  name: 'sqlSetup'
+resource joinDomainExtensions 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = [for (vmName, i) in memberVmNames: {
+  parent: vms[i + 1] // +1 because vms[0] is domain controller
+  name: 'JoinDomain'
   location: location
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uami.id}': {}
-    }
-  }
-  kind: 'AzurePowerShell'
   properties: {
-    azPowerShellVersion: '11.0'
-    scriptContent: 'Write-Host "Executing SQL setup inside VM ${vmName}..."; $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword); $scriptUrl = "https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/setup-sql.ps1";$localScript = "setup-sql.ps1"; Invoke-WebRequest -Uri $scriptUrl -OutFile $localScript; Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId \'RunPowerShellScript\' -ScriptPath $localScript -Parameter @{"AdminPassword"="${adminPassword}"};Write-Host "SQL Setup script executed inside VM."'
-    timeout: 'PT60M'
-    cleanupPreference: 'OnSuccess'
-    retentionInterval: 'P1D'
+    publisher: 'Microsoft.Compute'
+    type: 'CustomScriptExtension'
+    typeHandlerVersion: '1.10'
+    autoUpgradeMinorVersion: true
+    settings: {
+      fileUris: [
+        'https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/join-domain.ps1'
+      ]
+    }
+    protectedSettings: {
+      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File join-domain.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
+    }
   }
   dependsOn: [
     waitForVM
   ]
-}
+}]

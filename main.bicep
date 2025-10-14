@@ -3,19 +3,20 @@ param adminUsername string = 'contosoadmin'
 @secure()
 param adminPassword string
 
-param domainName string = 'contoso.local'
+param domainName string = 'kembrowski.ovh'
 param vmSize string = 'Standard_B2ms'
 param vmNames array = [
-  'ad-dev-contoso'
-  'dev-1-contoso'
-  'dev-2-contoso'
+  'ad-dev-kembrowski'
+  'dev-1-kembrowski'
+  'dev-2-kembrowski'
+]
+param memberVmNames array = [
+  'dev-1-kembrowski'
+  'dev-2-kembrowski'
 ]
 
-var domainControllerName = vmNames[0]
-var memberVmNames = vmNames[1:]
-
-var vnetName = 'vnet-dev-contoso'
-var subnetName = 'subnet-dev-contoso'
+var vnetName = 'vnet-dev-kembrowski'
+var subnetName = 'subnet-dev-kembrowski'
 var resourceGroupName = resourceGroup().name
 
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -176,7 +177,7 @@ resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'
-    scriptContent: '$retry = 0; do { $vm = Get-AzVM -ResourceGroupName "${resourceGroupName}" -Name "${vmName}" -Status; $state = $vm.Statuses | Where-Object { $_.Code -like "PowerState/*" } | Select-Object -ExpandProperty DisplayStatus; Write-Host "VM state: $state"; if ($state -eq "VM running") { Write-Host "VM is running, proceeding..."; exit 0 } Start-Sleep -Seconds 30; $retry++; } while ($retry -lt 20); throw "VM did not reach running state within the expected time.";'
+    scriptContent: '$retry = 0; do { $vm = Get-AzVM -ResourceGroupName "${resourceGroupName}" -Name "${vmNames[0]}" -Status; $state = $vm.Statuses | Where-Object { $_.Code -like "PowerState/*" } | Select-Object -ExpandProperty DisplayStatus; Write-Host "VM state: $state"; if ($state -eq "VM running") { Write-Host "VM is running, proceeding..."; exit 0 } Start-Sleep -Seconds 30; $retry++; } while ($retry -lt 20); throw "VM did not reach running state within the expected time.";'
     timeout: 'PT30M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'

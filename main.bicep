@@ -6,17 +6,17 @@ param adminPassword string
 param domainName string = 'kembrowski.ovh'
 param vmSize string = 'Standard_B2ms'
 param vmNames array = [
-  'ad-dev-kembrowski'
-  'dev-1-kembrowski'
-  'dev-2-kembrowski'
+  'ad-dev-kem'
+  'dev-1-kem'
+  'dev-2-kem'
 ]
 param memberVmNames array = [
-  'dev-1-kembrowski'
-  'dev-2-kembrowski'
+  'dev-1-kem'
+  'dev-2-kem'
 ]
 
-var vnetName = 'vnet-dev-kembrowski'
-var subnetName = 'subnet-dev-kembrowski'
+var vnetName = 'vnet-dev-kem'
+var subnetName = 'subnet-dev-kem'
 var resourceGroupName = resourceGroup().name
 
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
@@ -52,6 +52,110 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
           destinationAddressPrefix: '*'
         }
       }
+      {
+        name: 'DomainDNS'
+        properties: {
+          priority: 1100
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '53'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainDNSUDP'
+        properties: {
+          priority: 1110
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Udp'
+          sourcePortRange: '*'
+          destinationPortRange: '53'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainKerberos'
+        properties: {
+          priority: 1120
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '88'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainKerberosUDP'
+        properties: {
+          priority: 1130
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Udp'
+          sourcePortRange: '*'
+          destinationPortRange: '88'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainLDAP'
+        properties: {
+          priority: 1140
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '389'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainLDAPUDP'
+        properties: {
+          priority: 1150
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Udp'
+          sourcePortRange: '*'
+          destinationPortRange: '389'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainSMB'
+        properties: {
+          priority: 1160
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '445'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
+      {
+        name: 'DomainRPC'
+        properties: {
+          priority: 1170
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourcePortRange: '*'
+          destinationPortRange: '135'
+          sourceAddressPrefix: 'VirtualNetwork'
+          destinationAddressPrefix: '*'
+        }
+      }
     ]
   }
 }
@@ -62,6 +166,11 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
   properties: {
     addressSpace: {
       addressPrefixes: ['10.0.0.0/16']
+    }
+    dhcpOptions: {
+      dnsServers: [
+        '10.0.0.4'
+      ]
     }
     subnets: [
       {
@@ -182,11 +291,13 @@ resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'
   }
+  dependsOn: [
+    setupDomainController
+  ]
 }
 
-
 resource joinDomainExtensions 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = [for (vmName, i) in memberVmNames: {
-  parent: vms[i + 1] // +1 because vms[0] is domain controller
+  parent: vms[i + 1]
   name: 'JoinDomain'
   location: location
   properties: {

@@ -139,13 +139,13 @@ resource setupExtensionForest 'Microsoft.Compute/virtualMachines/extensions@2023
       autoUpgradeMinorVersion: true
       settings: {
         fileUris: [
-          'https://raw.githubusercontent.com/silentmark/scripts/setup-ad.ps1'
+          'https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/setup-ad.ps1'
         ]
+      }
       protectedSettings: {
         commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
       }
     }
-  }
 }
 
 resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
@@ -168,7 +168,7 @@ resource sqlSetup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'
-    scriptContent: 'Write-Host "Executing SQL setup inside VM ${vmName}..."; $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword); Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId \'RunPowerShellScript\' -ScriptPath "https://raw.githubusercontent.com/silentmark/scripts/setup-sql.ps1" -Parameter @{"AdminPassword"="${adminPassword}"};Write-Host "SQL Setup script executed inside VM."'
+    scriptContent: 'Write-Host "Executing SQL setup inside VM ${vmName}..."; $securePassword = ConvertTo-SecureString "${adminPassword}" -AsPlainText -Force; $cred = New-Object System.Management.Automation.PSCredential ("${adminUsername}", $securePassword); $scriptUrl = "https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/setup-sql.ps1";$localScript = "setup-sql.ps1"; Invoke-WebRequest -Uri $scriptUrl -OutFile $localScript; Invoke-AzVMRunCommand -ResourceGroupName "${resourceGroupName}" -VMName "${vmName}" -CommandId \'RunPowerShellScript\' -ScriptPath $localScript -Parameter @{"AdminPassword"="${adminPassword}"};Write-Host "SQL Setup script executed inside VM."'
     timeout: 'PT60M'
     cleanupPreference: 'OnSuccess'
     retentionInterval: 'P1D'

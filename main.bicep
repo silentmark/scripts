@@ -12,9 +12,24 @@ var subnetName = 'subnet-dev-contoso'
 var nsgName = '${vmName}-nsg'
 var nicName = '${vmName}-nic'
 var pipName = '${vmName}-pip'
+var identityName = '${vmName}-uami'
 var resourceGroupName = resourceGroup().name
 
-// Networking
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: identityName
+  location: location
+}
+
+resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, uami.id, 'contributor')
+  scope: resourceGroup()
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')  // Owner
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 resource nsg 'Microsoft.Network/networkSecurityGroups@2023-04-01' = {
   name: nsgName
   location: location
@@ -129,28 +144,34 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-03-01' = {
 
 // Run setup script on first boot
 resource setupExtensionForest 'Microsoft.Compute/virtualMachines/extensions@2023-03-01' = {
-    parent: vm
-    name: 'SetupExtensionForest'
-    location: location
-    properties: {
-      publisher: 'Microsoft.Compute'
-      type: 'CustomScriptExtension'
-      typeHandlerVersion: '1.10'
-      autoUpgradeMinorVersion: true
-      settings: {
-        fileUris: [
-          'https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/setup-ad.ps1'
-        ]
-      }
-      protectedSettings: {
-        commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
-      }
+  parent: vm
+  name: 'SetupExtensionForest'
+  location: location
+  properties: {
+    publisher: 'Microsoft.Compute'
+    type: 'CustomScriptExtension'
+    typeHandlerVersion: '1.10'
+    autoUpgradeMinorVersion: true
+    settings: {
+      fileUris: [
+        'https://raw.githubusercontent.com/silentmark/scripts/refs/heads/main/setup-ad.ps1'
+      ]
     }
+    protectedSettings: {
+      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File setup-ad.ps1 -DomainName ${domainName} -AdminPassword "${adminPassword}"'
+    }
+  }
 }
 
 resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: 'waitForVM'
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
+  }
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'
@@ -165,6 +186,12 @@ resource waitForVM 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
 resource sqlSetup 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
   name: 'sqlSetup'
   location: location
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
+  }
   kind: 'AzurePowerShell'
   properties: {
     azPowerShellVersion: '11.0'

@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$DomainName,
+    [string]$DomainName = "kembrowski.ovh",
     [Parameter(Mandatory=$true)]
-    [string]$AdminPassword
+    [string]$AdminPassword = "P@ssw0rd1234!"  # Default password, change as needed
 )
 
 # You may want to set this to your domain admin username used in setup-ad.ps1

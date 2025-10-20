@@ -1,0 +1,44 @@
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Who Am I (Server)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css" />
+    <style>        body {
+            margin: 2rem;
+        }
+
+        pre {
+            background: #f7f7f7;
+            padding: 1rem;
+        }
+
+        .muted {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Who Am I (Server call to App Proxy)</h3>
+        <div class="muted">
+            @if (User?.Identity?.IsAuthenticated ?? false)
+            {
+                <span>Signed in: @User.Identity?.Name</span>
+                <form method="post" asp-page-handler="Logout" style="display:inline;margin-left:1rem">
+                    <button class="button button-outline" type="submit">Sign out</button>
+                </form>
+            }
+        </div>
+    </div>
+    <hr />
+    <main>
+        @RenderBody()
+    </main>
+</body>
+</html>

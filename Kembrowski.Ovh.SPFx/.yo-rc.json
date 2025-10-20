@@ -1,0 +1,20 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "useGulp": false,
+    "plusBeta": true,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.19.0",
+    "sdksVersions": {},
+    "version": "1.22.0-beta.3",
+    "libraryName": "kembrowski-ovh-spfx",
+    "libraryId": "b5475603-5656-441c-a672-5434c6c684f0",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "kembrowski-ovh-spfx",
+    "solutionShortDescription": "kembrowski-ovh-spfx description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "extension",
+    "extensionType": "ApplicationCustomizer"
+  }
+}

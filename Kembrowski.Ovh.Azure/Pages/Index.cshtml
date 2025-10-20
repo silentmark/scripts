@@ -1,0 +1,22 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+<p>This app signs in with Entra ID, then calls the App Proxy API from the server using the On-Behalf-Of flow.</p>
+
+<form method="post" asp-page-handler="CallApi">
+    <button class="button">Who Am I? (server)</button>
+</form>
+
+@if (!string.IsNullOrEmpty(Model.ApiResult))
+{
+    <h5>API response</h5>
+    <pre>@Model.ApiResult</pre>
+}
+
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <h5>Error</h5>
+    <pre>@Model.Error</pre>
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/spfx-serve.schema.json",
+  "port": 4321,
+  "https": true,
+  "serveConfigurations": {
+    "default": {
+      "pageUrl": "https://kembrowskiatos.sharepoint.com/sites/KGHM/SitePages/CollabHome.aspx",
+      "customActions": {
+        "648cf4f9-7b6a-4b74-ad3b-aa51e349d097": {
+          "location": "ClientSideExtension.ApplicationCustomizer",
+          "properties": {
+            "webApi": "localhost:7081"
+          }
+        }
+      }
+    }
+  }
+}

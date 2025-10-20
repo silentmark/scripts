@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Elements xmlns="http://schemas.microsoft.com/sharepoint/">
+    <CustomAction
+        Title="WhoAmI"
+        Location="ClientSideExtension.ApplicationCustomizer"
+        ClientSideComponentId="648cf4f9-7b6a-4b74-ad3b-aa51e349d097"
+        ClientSideComponentProperties="{&quot;webApi&quot;:&quot;kembrowskicloudapi.azurewebsites.net&quot;}">
+    </CustomAction>
+</Elements>

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "who-am-i-application-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/whoAmI/WhoAmIApplicationCustomizer.js",
+          "manifest": "./src/extensions/whoAmI/WhoAmIApplicationCustomizer.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "WhoAmIApplicationCustomizerStrings": "lib/extensions/whoAmI/loc/{locale}.js"
+  }
+}

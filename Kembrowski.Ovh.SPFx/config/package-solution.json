@@ -1,0 +1,52 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "kembrowski-ovh-spfx-client-side-solution",
+    "id": "b5475603-5656-441c-a672-5434c6c684f0",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "webApiPermissionRequests": [
+      {
+        "resource": "api://e873c0d0-5003-4741-b57a-97d10147c912",
+        "scope": "impersonate_user"
+      }
+    ],
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.0-beta.3"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "kembrowski-ovh-spfx description"
+      },
+      "longDescription": {
+        "default": "kembrowski-ovh-spfx description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "Application Extension - Deployment of custom action",
+        "description": "Deploys a custom action with ClientSideComponentId association",
+        "id": "3923e134-a01e-490c-9e9d-b7c230d09e7e",
+        "version": "1.0.0.0",
+        "assets": {
+          "elementManifests": [
+            "elements.xml",
+            "ClientSideInstance.xml"
+          ]
+        }
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/kembrowski-ovh-spfx.sppkg"
+  }
+}

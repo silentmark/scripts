@@ -1,0 +1,46 @@
+{
+  "name": "kembrowski-ovh-spfx",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "node": ">=22.14.0 < 23.0.0"
+  },
+  "scripts": {
+    "build": "heft build --clean",
+    "test": "heft test",
+    "test-only": "heft run --only test --",
+    "clean": "heft clean",
+    "deploy": "heft dev-deploy",
+    "start": "heft start --clean",
+    "build-watch": "heft build --lite",
+    "package-solution": "heft package-solution --production",
+    "deploy-azure-storage": "heft deploy-azure-storage",
+    "eject-webpack": "heft eject-webpack",
+    "trust-dev-cert": "heft trust-dev-cert",
+    "untrust-dev-cert": "heft untrust-dev-cert"
+  },
+  "dependencies": {
+    "tslib": "2.8.1",
+    "@microsoft/sp-core-library": "1.22.0-beta.3",
+    "@microsoft/decorators": "1.22.0-beta.3",
+    "@microsoft/sp-dialog": "1.22.0-beta.3",
+    "@microsoft/sp-application-base": "1.22.0-beta.3"
+  },
+  "devDependencies": {
+    "@rushstack/eslint-config": "4.5.1",
+    "@microsoft/eslint-plugin-spfx": "1.22.0-beta.3",
+    "@microsoft/eslint-config-spfx": "1.22.0-beta.3",
+    "@microsoft/spfx-web-build-rig": "1.22.0-beta.3",
+    "@microsoft/spfx-heft-plugins": "1.22.0-beta.3",
+    "@rushstack/heft": "0.74.3",
+    "@types/heft-jest": "1.0.6",
+    "@types/webpack-env": "1.18.8",
+    "@typescript-eslint/parser": "8.46.1",
+    "eslint": "8.57.1",
+    "typescript": "5.3.3",
+    "@microsoft/sp-module-interfaces": "1.22.0-beta.3"
+  },
+  "overrides": {
+    "@rushstack/heft": "0.74.3"
+  }
+}
